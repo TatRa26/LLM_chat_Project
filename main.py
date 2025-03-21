@@ -1,7 +1,5 @@
 import streamlit as st
-
-from src import LlamaService
-
+from llama_service import LlamaService
 
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
