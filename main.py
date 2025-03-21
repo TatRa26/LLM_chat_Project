@@ -2,6 +2,7 @@ import streamlit as st
 
 from src import LlamaService
 
+
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
     st.session_state.messages = []
