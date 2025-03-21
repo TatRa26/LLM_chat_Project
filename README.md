@@ -5,6 +5,8 @@
 Создаем файл `.env` в корневой директории проекта:
 
 ```bash
+MODEL_NAME=название_модели
+API_URL=url_модели
 API_KEY=ваш_ключ_api
 ```
 
@@ -24,5 +26,3 @@ pip install -r requirements.txt
 ```bash
 streamlit run main.py
 ```
-
-
