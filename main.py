@@ -1,4 +1,5 @@
 import streamlit as st
+
 from src import LlamaService
 
 # Инициализация состояния сессии
