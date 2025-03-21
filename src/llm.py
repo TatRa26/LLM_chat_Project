@@ -1,16 +1,12 @@
-import os
-
-from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
-
+from configs import config
 
 class LlamaService:
     def __init__(self):
         self.client = OpenAI(
-            api_key=os.getenv("API_KEY"),
-            base_url="https://some_model/v1"
+            api_key=config.api_key,
+            base_url=config.api_url
         )
         
         self.system_prompt = {
