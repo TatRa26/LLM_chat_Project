@@ -22,7 +22,5 @@ pip install -r requirements.txt
 Сервис будет доступен по адресу: http://localhost:8501
 
 ```bash
-streamlit run src/app.py
+streamlit run main.py
 ```
-
-
