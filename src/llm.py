@@ -1,7 +1,7 @@
 import os
+
 from dotenv import load_dotenv
 from openai import OpenAI
-from typing import List, Dict
 
 load_dotenv()
 
@@ -19,7 +19,7 @@ class LlamaService:
                       "Твои ответы должны быть информативными, но краткими и по существу."
         }
     
-    def generate_response(self, prompt: str, history: List[Dict[str, str]]) -> str:
+    def generate_response(self, prompt: str, history: list[dict[str, str]]) -> str:
         try:
             messages = [self.system_prompt]
             messages.extend(history[-5:])  # Наивная реализация истории
