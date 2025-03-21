@@ -5,6 +5,8 @@
 Создаем файл `.env` в корневой директории проекта:
 
 ```bash
+MODEL_NAME=название_модели
+API_URL=url_модели
 API_KEY=ваш_ключ_api
 ```
 
@@ -22,7 +24,5 @@ pip install -r requirements.txt
 Сервис будет доступен по адресу: http://localhost:8501
 
 ```bash
-streamlit run src/app.py
+streamlit run main.py
 ```
-
-
