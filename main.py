@@ -1,5 +1,5 @@
 import streamlit as st
-from llama_service import LlamaService
+from src.llm import LlamaService
 
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
@@ -15,6 +15,7 @@ with col1:
 with col2:
     if st.button("🗑️ Очистить"):
         st.session_state.messages = []
+        llama.clear_memory()  # Очищаем память бота
         st.rerun()
 
 # Чтобы с новым сообщением не затирались старые сообщения
