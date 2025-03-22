@@ -1,19 +1,18 @@
 import os
 import sqlite3
-from configs.config import load_config
-from langchain_openai import ChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_community.chat_message_histories import ChatMessageHistory
-from typing import List, Dict
 import warnings
+
+from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_openai import ChatOpenAI
+
+from configs import config
 
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
 
 class LlamaService:
     def __init__(self, user_id: int = None):
-        config = load_config()
-
         self.client = ChatOpenAI(
             api_key=config.api_key,
             base_url=config.api_url,
@@ -128,7 +127,7 @@ class LlamaService:
         except Exception as e:
             print(f"Ошибка при сохранении истории: {str(e)}")
 
-    def generate_response(self, prompt: str, history: List[Dict[str, str]]) -> str:
+    def generate_response(self, prompt: str, history: list[dict[str, str]]) -> str:
         try:
             # Проверяем, что сообщения из history не дублируются в self.memory
             current_memory_contents = [msg.content for msg in self.memory.messages]

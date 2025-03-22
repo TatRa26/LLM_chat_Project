@@ -1,6 +1,8 @@
-import streamlit as st
 import sqlite3
-from src.llm import LlamaService
+
+import streamlit as st
+
+from src import LlamaService
 
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
