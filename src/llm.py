@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 import warnings
@@ -9,10 +10,15 @@ from langchain_openai import ChatOpenAI
 
 from configs import config
 
+logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
+system_prompt = """
+Ты - полезный ассистент, который всегда отвечает на русском языке. \
+Твои ответы должны быть информативными, но краткими и по существу.
+"""
 
 class LlamaService:
-    def __init__(self, user_id: int = None):
+    def __init__(self, user_id: int = None) -> None:
         self.client = ChatOpenAI(
             api_key=config.api_key,
             base_url=config.api_url,
@@ -22,10 +28,7 @@ class LlamaService:
             top_p=0.95
         )
 
-        self.system_prompt = SystemMessage(
-            content="Ты - полезный ассистент, который всегда отвечает на русском языке. "
-                    "Твои ответы должны быть информативными, но краткими и по существу."
-        )
+        self.system_prompt = SystemMessage(system_prompt)
 
         self.memory: BaseChatMessageHistory = ChatMessageHistory()
         self.db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history.db")
@@ -37,7 +40,7 @@ class LlamaService:
             self.user_id = self._get_or_create_user("default_user")
         self._load_history_from_db()
 
-    def _init_db(self):
+    def _init_db(self) -> None:
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -58,10 +61,11 @@ class LlamaService:
             """)
             conn.commit()
             conn.close()
-        except Exception as e:
-            print(f"Ошибка при инициализации базы данных: {str(e)}")
 
-    def _get_or_create_user(self, username: str) -> int:
+        except Exception as e:
+            logger.exception(f"Ошибка при инициализации базы данных: {str(e)}")
+
+    def _get_or_create_user(self, username: str) -> int | None:
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -75,18 +79,23 @@ class LlamaService:
                 cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
                 user_id = cursor.fetchone()[0]
             conn.close()
+
             return user_id
+
         except Exception as e:
-            print(f"Ошибка при получении/создании пользователя: {str(e)}")
+            logger.exception(f"Ошибка при получении/создании пользователя: {str(e)}")
+
+    def _load_history_from_db(self) -> None:
+        if not self.load_history or self.user_id is None:
             return None
 
-    def _load_history_from_db(self):
-        if not self.load_history or self.user_id is None:
-            return
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
-            cursor.execute("SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY id", (self.user_id,))
+            cursor.execute(
+                "SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY id",
+                (self.user_id,)
+            )
             history = cursor.fetchall()
             for role, content in history:
                 if role == "user":
@@ -94,10 +103,11 @@ class LlamaService:
                 elif role == "assistant":
                     self.memory.add_ai_message(content)
             conn.close()
-        except Exception as e:
-            print(f"Ошибка при загрузке истории: {str(e)}")
 
-    def _save_history_to_db(self):
+        except Exception as e:
+            logger.exception(f"Ошибка при загрузке истории: {str(e)}")
+
+    def _save_history_to_db(self) -> None:
         try:
             conn = sqlite3.connect(self.db_file)
             cursor = conn.cursor()
@@ -119,13 +129,18 @@ class LlamaService:
             total_count = cursor.fetchone()[0]
             if total_count > 10000:
                 cursor.execute(
-                    "DELETE FROM chat_history WHERE user_id = ? AND id IN (SELECT id FROM chat_history WHERE user_id = ? ORDER BY id ASC LIMIT ?)",
+                    """
+                    DELETE FROM chat_history
+                    WHERE user_id = ? AND id IN 
+                    (SELECT id FROM chat_history WHERE user_id = ? ORDER BY id ASC LIMIT ?)
+                    """,
                     (self.user_id, self.user_id, total_count - 10000)
                 )
             conn.commit()
             conn.close()
+
         except Exception as e:
-            print(f"Ошибка при сохранении истории: {str(e)}")
+            logger.exception(f"Ошибка при сохранении истории: {str(e)}")
 
     def generate_response(self, prompt: str, history: list[dict[str, str]]) -> str:
         try:
@@ -184,5 +199,6 @@ class LlamaService:
             else:
                 print(f"История для user_id {self.user_id} пуста.")
             conn.close()
+
         except sqlite3.Error as e:
-            print(f"Ошибка при чтении базы данных: {e}")
+            logger.exception(f"Ошибка при чтении базы данных: {e}")

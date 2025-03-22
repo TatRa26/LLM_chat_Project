@@ -1,8 +1,11 @@
+import logging
 import sqlite3
 
 import streamlit as st
 
 from src import LlamaService
+
+logger = logging.getLogger(__name__)
 
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
@@ -15,17 +18,21 @@ if "change_user" not in st.session_state:
     st.session_state.change_user = False
 
 # Функция для получения имени пользователя по user_id
-def get_username_by_id(user_id, db_file):
+def get_username_by_id(user_id: int, db_file: str) -> str | None:
     try:
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
-        cursor.execute("SELECT username FROM users WHERE user_id = ?", (user_id,))
+        cursor.execute(
+            "SELECT username FROM users WHERE user_id = ?",
+            (user_id,)
+        )
         result = cursor.fetchone()
         conn.close()
+
         return result[0] if result else None
+
     except Exception as e:
-        print(f"Ошибка при получении имени пользователя: {str(e)}")
-        return None
+        logger.exception(f"Ошибка при получении имени пользователя: {str(e)}")
 
 # Поле для ввода имени пользователя
 if st.session_state.user_id is None or st.session_state.change_user:
