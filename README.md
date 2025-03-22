@@ -1,6 +1,8 @@
 # Чат с LLM
 
-## Настройка переменных окружения
+## 1. Поднятие сервиса локально
+
+### Настройка переменных окружения:
 
 Создаем файл `.env` в корневой директории проекта:
 
@@ -10,7 +12,7 @@ API_URL=url_модели
 API_KEY=ваш_ключ_api
 ```
 
-## Настройка окружения
+### Настройка окружения:
 
 ```bash
 python -m venv venv
@@ -18,11 +20,42 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Запуск Streamlit сервиса:
+```bash
+make up.local
+```
 
-## Запуск Streamlit сервиса
-
-Сервис будет доступен по адресу: http://localhost:8501
+или
 
 ```bash
 streamlit run main.py
 ```
+
+## 2. Поднятие сервиса с помощью Docker
+
+### Запуск Streamlit сервиса:
+```bash
+make build.up
+```
+По этой команде будет произведени билд образа и поднятие сервиса
+
+или
+
+```bash
+docker build -t <image_name> .
+docker run -p 8501:8501 --rm --name <container_name> <image_name>
+```
+
+Если образ уже билдился ранее, поднять сервис можно по команде:
+
+```bash
+make up
+```
+
+или
+
+```bash
+docker run -p 8501:8501 --rm --name <container_name> <image_name>
+```
+
+Сервис будет доступен по адресу: http://localhost:8501
