@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history.db")
+db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history/chat_history.db")
 
 try:
     conn = sqlite3.connect(db_file)

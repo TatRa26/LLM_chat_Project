@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # Путь к базе данных
-db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history.db")
+db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history/chat_history.db")
 
 # Подключение к базе данных
 conn = sqlite3.connect(db_file)
