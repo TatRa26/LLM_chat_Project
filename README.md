@@ -43,7 +43,7 @@ make build.up
 
 ```bash
 docker build -t <image_name> .
-docker run -p 8501:8501 --rm --name <container_name> <image_name>
+docker run -p 8501:8501 -v llm_chat_volume:/app/chat_history/ --rm --name <container_name> <image_name>
 ```
 
 Если образ уже билдился ранее, поднять сервис можно по команде:
