@@ -31,7 +31,7 @@ class LlamaService:
         self.system_prompt = SystemMessage(system_prompt)
 
         self.memory: BaseChatMessageHistory = ChatMessageHistory()
-        self.db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history.db")
+        self.db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history/chat_history.db")
         self.load_history = True
         self.user_id = user_id
 

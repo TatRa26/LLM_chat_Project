@@ -9,6 +9,6 @@ build:
 	 docker build -t $(IMAGE_NAME) .
 
 up:
-	docker run -p $(PORT):8501 --rm --name $(CONTAINER_NAME) $(IMAGE_NAME)
+	docker run -p $(PORT):8501 -v llm_chat_volume:/app/chat_history/ --rm --name $(CONTAINER_NAME) $(IMAGE_NAME)
 
 build.up: build up

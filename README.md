@@ -55,7 +55,7 @@ make up
 или
 
 ```bash
-docker run -p 8501:8501 --rm --name <container_name> <image_name>
+docker run -p 8501:8501 -v llm_chat_volume:/app/chat_history/ --rm --name <container_name> <image_name>
 ```
 
 Сервис будет доступен по адресу: http://localhost:8501
