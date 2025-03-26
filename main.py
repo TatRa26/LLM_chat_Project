@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 
 import streamlit as st
 
@@ -20,24 +19,22 @@ if "change_user" not in st.session_state:
 # Инициализация LlamaService
 llama = LlamaService(st.session_state.user_id)
 
-def get_username_by_id(user_id: int, db_file: str) -> str | None:
+
+# Функция для получения имени пользователя по user_id
+def get_username_by_id(user_id: int, llama_service: LlamaService) -> str | None:
     try:
-        conn = sqlite3.connect(db_file)
-        cursor = conn.cursor()
-        cursor.execute("SELECT username FROM users WHERE user_id = ?", (user_id,))
-        result = cursor.fetchone()
-        conn.close()
-        return result[0] if result else None
+        user = llama_service.session.query(User).filter_by(user_id=user_id).first()
+        return user.username if user else None
     except Exception as e:
         logger.exception(f"Ошибка при получении имени пользователя: {str(e)}")
         return None
 
+
 # Проверяем, соответствует ли username в session_state реальному имени в базе данных
 if st.session_state.user_id:
-    db_username = get_username_by_id(st.session_state.user_id, llama.db_file)
+    db_username = get_username_by_id(st.session_state.user_id, llama)
     if db_username and db_username != st.session_state.username:
         st.session_state.username = db_username
-
 
 st.title("💬 Чат с LLM")
 
@@ -45,7 +42,7 @@ st.title("💬 Чат с LLM")
 if st.session_state.user_id is not None and not st.session_state.change_user:
     # Подзаголовок с именем пользователя (только для авторизованных)
     st.subheader(f"Пользователь: {st.session_state.username}")
-    
+
     # Кнопки управления
     col1, col2, col3 = st.columns(3)
     with col1:
