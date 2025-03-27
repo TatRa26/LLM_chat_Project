@@ -44,12 +44,15 @@
 Запустите сервис с помощью команд:
 ```bash
 make up
+alembic upgrade head
 ```
 
 Или:
 
 ```bash
 docker compose up
+alembic upgrade head
+
    ```
 
 Сервис будет доступен по адресу: http://localhost:8501
