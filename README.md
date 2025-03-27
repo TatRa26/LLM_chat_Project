@@ -52,8 +52,7 @@ alembic upgrade head
 ```bash
 docker compose up
 alembic upgrade head
-
-   ```
+```
 
 Сервис будет доступен по адресу: http://localhost:8501
 
