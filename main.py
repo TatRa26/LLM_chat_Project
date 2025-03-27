@@ -2,6 +2,8 @@ import logging
 
 import streamlit as st
 
+from database import get_db
+from models import User
 from src import LlamaService
 
 logger = logging.getLogger(__name__)
@@ -21,10 +23,12 @@ llama = LlamaService(st.session_state.user_id)
 
 
 # Функция для получения имени пользователя по user_id
-def get_username_by_id(user_id: int, llama_service: LlamaService) -> str | None:
+def get_username_by_id(user_id: int) -> str | None:
     try:
-        user = llama_service.session.query(User).filter_by(user_id=user_id).first()
+        session = next(get_db())
+        user = session.query(User).filter_by(user_id=user_id).first()
         return user.username if user else None
+
     except Exception as e:
         logger.exception(f"Ошибка при получении имени пользователя: {str(e)}")
         return None
@@ -32,7 +36,7 @@ def get_username_by_id(user_id: int, llama_service: LlamaService) -> str | None:
 
 # Проверяем, соответствует ли username в session_state реальному имени в базе данных
 if st.session_state.user_id:
-    db_username = get_username_by_id(st.session_state.user_id, llama)
+    db_username = get_username_by_id(st.session_state.user_id)
     if db_username and db_username != st.session_state.username:
         st.session_state.username = db_username
 
