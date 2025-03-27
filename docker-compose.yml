@@ -1,23 +1,32 @@
 services:
   app:
     build: .
+    image: llm_chat_image
+    container_name: llm_chat_app
     ports:
       - "8501:8501"
+    networks:
+      - llm_chat_network
     depends_on:
       - db
-    environment:
-      - DATABASE_URL=postgresql://chat_user:chat_password@db:5432/chat_history
 
   db:
     image: postgres:15
+    container_name: postgres_db
     environment:
       POSTGRES_USER: chat_user
       POSTGRES_PASSWORD: chat_password
       POSTGRES_DB: chat_history
     ports:
       - "5432:5432"
+    networks:
+      - llm_chat_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+
 volumes:
   postgres_data:
+
+networks:
+  llm_chat_network:
