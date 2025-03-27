@@ -9,6 +9,7 @@ class Config:
     model_name: str
     api_url: str
     api_key: str
+    postgres_url: str
 
 
 def load_config() -> Config:
@@ -17,9 +18,11 @@ def load_config() -> Config:
     model_name = os.getenv("MODEL_NAME")
     api_url = os.getenv("API_URL")
     api_key = os.getenv("API_KEY")
+    postgres_url = os.getenv("POSTGRES_URL")
 
     return Config(
         model_name=model_name,
         api_url=api_url,
-        api_key=api_key
+        api_key=api_key,
+        postgres_url=postgres_url
     )
