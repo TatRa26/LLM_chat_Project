@@ -3,7 +3,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Импортируем модели
-from src.llm import Base, User, ChatHistory
+from models import Base
 
 # Эта строка нужна для автогенерации миграций
 target_metadata = Base.metadata
