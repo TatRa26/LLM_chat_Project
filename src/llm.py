@@ -1,6 +1,4 @@
 import logging
-import os
-import sqlite3
 import warnings
 
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
@@ -8,14 +6,12 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_openai import ChatOpenAI
 
-from configs import config
+from configs import config, system_prompt
+from models import User, ChatHistory
+from database import get_db
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
-system_prompt = """
-Ты - полезный ассистент, который всегда отвечает на русском языке. \
-Твои ответы должны быть информативными, но краткими и по существу.
-"""
 
 class LlamaService:
     def __init__(self, user_id: int = None) -> None:
@@ -29,115 +25,81 @@ class LlamaService:
         )
 
         self.system_prompt = SystemMessage(system_prompt)
-
         self.memory: BaseChatMessageHistory = ChatMessageHistory()
-        self.db_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history/chat_history.db")
         self.load_history = True
         self.user_id = user_id
-
-        self._init_db()
         if self.user_id is None:
             self.user_id = self._get_or_create_user("default_user")
         self._load_history_from_db()
 
-    def _init_db(self) -> None:
+    @staticmethod
+    def _get_or_create_user(username: str) -> int | None:
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT NOT NULL UNIQUE
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS chat_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    role TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id)
-                )
-            """)
-            conn.commit()
-            conn.close()
-
-        except Exception as e:
-            logger.exception(f"Ошибка при инициализации базы данных: {str(e)}")
-
-    def _get_or_create_user(self, username: str) -> int | None:
-        try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
-            result = cursor.fetchone()
-            if result:
-                user_id = result[0]
-            else:
-                cursor.execute("INSERT INTO users (username) VALUES (?)", (username,))
-                conn.commit()
-                cursor.execute("SELECT user_id FROM users WHERE username = ?", (username,))
-                user_id = cursor.fetchone()[0]
-            conn.close()
-
-            return user_id
+            # Ищем пользователя по имени
+            session = next(get_db())
+            user = session.query(User).filter_by(username=username).first()
+            if user:
+                return user.user_id
+            # Если пользователя нет, создаем нового
+            new_user = User(username=username)
+            session.add(new_user)
+            session.commit()
+            return new_user.user_id
 
         except Exception as e:
             logger.exception(f"Ошибка при получении/создании пользователя: {str(e)}")
+            return None
 
     def _load_history_from_db(self) -> None:
         if not self.load_history or self.user_id is None:
-            return None
+            return
 
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY id",
-                (self.user_id,)
+            # Загружаем историю сообщений для пользователя
+            session = next(get_db())
+            messages = (
+                session
+                .query(ChatHistory)
+                .filter_by(user_id=self.user_id)
+                .order_by(ChatHistory.id)
+                .all()
             )
-            history = cursor.fetchall()
-            for role, content in history:
-                if role == "user":
-                    self.memory.add_user_message(content)
-                elif role == "assistant":
-                    self.memory.add_ai_message(content)
-            conn.close()
+            for msg in messages:
+                if msg.role == "user":
+                    self.memory.add_user_message(msg.content)
+                elif msg.role == "assistant":
+                    self.memory.add_ai_message(msg.content)
 
         except Exception as e:
             logger.exception(f"Ошибка при загрузке истории: {str(e)}")
 
     def _save_history_to_db(self) -> None:
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM chat_history WHERE user_id = ?", (self.user_id,))
-            current_count = cursor.fetchone()[0]
+            session = next(get_db())
+            # Подсчитываем текущее количество записей в базе для пользователя
+            current_count = (
+                session
+                .query(ChatHistory)
+                .filter_by(user_id=self.user_id).
+                count()
+            )
             new_messages = self.memory.messages[current_count:]
             for msg in new_messages:
                 if isinstance(msg, HumanMessage):
-                    cursor.execute(
-                        "INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
-                        (self.user_id, "user", msg.content)
-                    )
+                    new_msg = ChatHistory(user_id=self.user_id, role="user", content=msg.content)
+                    session.add(new_msg)
                 elif isinstance(msg, AIMessage):
-                    cursor.execute(
-                        "INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
-                        (self.user_id, "assistant", msg.content)
-                    )
-            cursor.execute("SELECT COUNT(*) FROM chat_history WHERE user_id = ?", (self.user_id,))
-            total_count = cursor.fetchone()[0]
+                    new_msg = ChatHistory(user_id=self.user_id, role="assistant", content=msg.content)
+                    session.add(new_msg)
+            session.commit()
+            # Ограничиваем количество записей (аналогично текущей логике)
+            total_count = session.query(ChatHistory).filter_by(user_id=self.user_id).count()
             if total_count > 10000:
-                cursor.execute(
-                    """
-                    DELETE FROM chat_history
-                    WHERE user_id = ? AND id IN 
-                    (SELECT id FROM chat_history WHERE user_id = ? ORDER BY id ASC LIMIT ?)
-                    """,
-                    (self.user_id, self.user_id, total_count - 10000)
-                )
-            conn.commit()
-            conn.close()
+                excess = total_count - 10000
+                oldest_messages = session.query(ChatHistory).filter_by(user_id=self.user_id).order_by(ChatHistory.id).limit(excess).all()
+                for msg in oldest_messages:
+                    session.delete(msg)
+                session.commit()
 
         except Exception as e:
             logger.exception(f"Ошибка при сохранении истории: {str(e)}")
@@ -186,19 +148,19 @@ class LlamaService:
 
     def print_history(self):
         try:
-            conn = sqlite3.connect(self.db_file)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM chat_history WHERE user_id = ?", (self.user_id,))
-            rows = cursor.fetchall()
-            if rows:
+            session = next(get_db())
+            messages = session.query(ChatHistory).filter_by(user_id=self.user_id).all()
+            if messages:
                 print(f"Содержимое таблицы chat_history для user_id {self.user_id}:")
                 print("ID | User ID | Role      | Content")
                 print("-" * 50)
-                for row in rows:
-                    print(f"{row[0]:<2} | {row[1]:<7} | {row[2]:<9} | {row[3]}")
+                for msg in messages:
+                    print(f"{msg.id:<2} | {msg.user_id:<7} | {msg.role:<9} | {msg.content}")
             else:
                 print(f"История для user_id {self.user_id} пуста.")
-            conn.close()
 
-        except sqlite3.Error as e:
+        except Exception as e:
             logger.exception(f"Ошибка при чтении базы данных: {e}")
+
+    # def __del__(self):
+    #     self.session.close()

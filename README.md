@@ -1,61 +1,65 @@
 # Чат с LLM
 
-## 1. Настройка переменных окружения:
+## 1. Настройка переменных окружения
 
-Создаем файл `.env` в корневой директории проекта:
+Создайте файл `.env` в корневой директории проекта и добавьте переменные как в указано в файле .env.example
 
-```bash
-MODEL_NAME=название_модели
-API_URL=url_модели
-API_KEY=ваш_ключ_api
-```
+### Настройка окружения
 
-### Настройка окружения:
+1. Создайте виртуальное окружение:
+   ```bash
+   python -m venv venv
+   ```
 
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+2. Активируйте виртуальное окружение:
+   ```bash
+   source venv/bin/activate
+   ```
+
+3. Установите необходимые зависимости:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 ## 2. Поднятие сервиса локально
 
-### Запуск Streamlit сервиса:
-```bash
-make up.local
-```
+### Запуск Streamlit сервиса
 
-или
+Используйте одну из следующих команд для запуска:
 
-```bash
-streamlit run main.py
-```
+- С помощью `make`:
+  ```bash
+  make up.local
+  ```
+
+- С помощью `streamlit`:
+  ```bash
+  streamlit run main.py
+  ```
 
 ## 3. Поднятие сервиса с помощью Docker
 
-### Запуск Streamlit сервиса:
-```bash
-make build.up
-```
-По этой команде будет произведени билд образа и поднятие сервиса
+### Запуск Streamlit сервиса
 
-или
-
-```bash
-docker build -t <image_name> .
-docker run -p 8501:8501 -v llm_chat_volume:/app/chat_history/ --rm --name <container_name> <image_name>
-```
-
-Если образ уже билдился ранее, поднять сервис можно по команде:
-
+Запустите сервис с помощью команд:
 ```bash
 make up
+alembic upgrade head
 ```
 
-или
+Или:
 
 ```bash
-docker run -p 8501:8501 -v llm_chat_volume:/app/chat_history/ --rm --name <container_name> <image_name>
+docker compose up
+alembic upgrade head
 ```
 
 Сервис будет доступен по адресу: http://localhost:8501
+
+## 4. Остановка сервиса
+
+```bash
+docker compose down
+```
+
+Это останавливает и удаляет контейнеры, а также сеть. Данные в базе сохраняются.
