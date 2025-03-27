@@ -54,7 +54,7 @@ docker compose up
 
 Сервис будет доступен по адресу: http://localhost:8501
 
-### 4. Остановка сервиса
+## 4. Остановка сервиса
 
 ```bash
 docker compose down
