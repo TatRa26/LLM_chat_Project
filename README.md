@@ -28,31 +28,28 @@
 Используйте одну из следующих команд для запуска:
 
 - С помощью `make`:
-  ```bash
-  make up.local
-  ```
+    ```bash
+    make up.local
+    ```
 
 - С помощью `streamlit`:
-  ```bash
-  streamlit run main.py
-  ```
+    ```bash
+    streamlit run main.py
+    ```
 
 ## 3. Поднятие сервиса с помощью Docker
 
 ### Запуск Streamlit сервиса
 
-Запустите сервис с помощью команд:
-```bash
-make up
-alembic upgrade head
-```
+- С помощью `make`:
+    ```bash
+    make up
+    ```
+- С помощью `docker`:
 
-Или:
-
-```bash
-docker compose up
-alembic upgrade head
-```
+    ```bash
+    docker compose up
+    ```
 
 Сервис будет доступен по адресу: http://localhost:8501
 
