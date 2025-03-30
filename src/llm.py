@@ -140,7 +140,8 @@ class LlamaService:
             return response.content.strip()
 
         except Exception as e:
-            return f"Ошибка при обращении к API: {str(e)}"
+            logger.exception(f'Ошибка в generate_response: {str(e)}')
+            return 'Извините, что-то пошло не так. Попробуйте снова!'
 
     def clear_memory(self):
         self.memory.clear()
