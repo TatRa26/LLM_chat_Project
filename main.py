@@ -5,6 +5,7 @@ import streamlit as st
 from database import get_db
 from models import User
 from src import LlamaService
+from router import DatasetRouter
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ if "username" not in st.session_state:
     st.session_state.username = None
 if "change_user" not in st.session_state:
     st.session_state.change_user = False
+if "router" not in st.session_state:
+    st.session_state.router = DatasetRouter()
 
 # Инициализация LlamaService
 llama = LlamaService(st.session_state.user_id)
@@ -81,8 +84,25 @@ if st.session_state.user_id is not None and not st.session_state.change_user:
 
         with st.chat_message("assistant"):
             with st.spinner("Печатает..."):
-                # Передаем полную историю
-                response = llama.generate_response(prompt, st.session_state.messages)
+                # Определяем подходящий датасет
+                dataset_name, similarity = st.session_state.router.router(prompt)
+                
+                if dataset_name:
+                    # Получаем релевантные чанки
+                    relevant_chunks = st.session_state.router.get_relevant_chunks(prompt, dataset_name)
+                    
+                    # Формируем контекст из чанков
+                    context = "\n".join([chunk["chunk"] for chunk in relevant_chunks])
+                    
+                    # Добавляем информацию о датасете в промпт
+                    enhanced_prompt = f"Контекст из датасета {dataset_name}:\n{context}\n\nВопрос пользователя: {prompt}"
+                    
+                    # Генерируем ответ с учетом контекста
+                    response = llama.generate_response(enhanced_prompt, st.session_state.messages)
+                else:
+                    # Если не удалось определить датасет, используем обычный промпт
+                    response = llama.generate_response(prompt, st.session_state.messages)
+                
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
