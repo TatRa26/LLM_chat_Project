@@ -18,21 +18,29 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  app:
+  migrations:
     build: .
     image: llm_chat_image
-    container_name: llm_chat_app
-    ports:
-      - '8501:8501'
-    command: sh -c "
-      alembic upgrade head
-      && streamlit run main.py --server.port=8501 --server.address=0.0.0.0
-      "
+    container_name: llm_chat_migrations
+    command: ["alembic", "upgrade", "head"]
     networks:
       - llm_chat_network
     depends_on:
       db:
         condition: service_healthy
+
+  app:
+    build: .
+    image: llm_chat_image
+    container_name: llm_chat_app
+    command: ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - '8501:8501'
+    networks:
+      - llm_chat_network
+    depends_on:
+      - db
+      - migrations
 
 volumes:
   postgres_data:
