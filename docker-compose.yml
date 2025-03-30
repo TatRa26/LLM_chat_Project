@@ -33,7 +33,13 @@ services:
     build: .
     image: llm_chat_image
     container_name: llm_chat_app
-    command: ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    command: sh -c "
+      echo Fetching the embedding model and populating the vector DataBase
+      && echo It might take a couple of minutes...
+      && python populate_db.py
+      && echo Service is ready to use!
+      && streamlit run main.py --server.port=8501 --server.address=0.0.0.0
+      "
     ports:
       - '8501:8501'
     networks:
@@ -41,6 +47,8 @@ services:
     depends_on:
       - db
       - migrations
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
 
 volumes:
   postgres_data:
