@@ -5,13 +5,31 @@ from langchain.schema import AIMessage, HumanMessage, SystemMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_openai import ChatOpenAI
+from langchain_postgres import PGVector
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 
-from configs import config, system_prompt
+from configs import config, system_prompt, classifier_prompt
 from models import User, ChatHistory
 from database import get_db
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
+MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+dataset_names = {
+    0: 'cyber_info',
+    1: 'documents',
+    2: 'dogs',
+    3: 'domru',
+    4: 'hygiene_and_cosmetics',
+    5: 'labor_code',
+    6: 'michelin',
+    7: 'red_mad_robot',
+    8: 'SP35',
+    9: 'world_class',
+    10: None,
+}
 
 class LlamaService:
     def __init__(self, user_id: int = None) -> None:
@@ -23,7 +41,10 @@ class LlamaService:
             max_tokens=256,
             top_p=0.95
         )
-
+        self.llm_classifier = self.client.with_structured_output(
+            schema=None,
+            method='json_mode'
+        )
         self.system_prompt = SystemMessage(system_prompt)
         self.memory: BaseChatMessageHistory = ChatMessageHistory()
         self.load_history = True
@@ -104,8 +125,54 @@ class LlamaService:
         except Exception as e:
             logger.exception(f"Ошибка при сохранении истории: {str(e)}")
 
+    @staticmethod
+    def _get_vector_store(collection_name: str) -> PGVector:
+        vector_store = PGVector(
+            embeddings=HuggingFaceEmbeddings(model_name=MODEL_NAME),
+            collection_name=collection_name,
+            connection=config.postgres_url,
+            use_jsonb=True,
+        )
+
+        return vector_store
+
+    def _get_rag_context(self, query: str,  collection_name: str, k: int = 1):
+        vector_store = self._get_vector_store(collection_name)
+        docs = vector_store.similarity_search(
+            query, k=k,
+            filter={"collection_name": {"$eq": collection_name}}
+        )
+        result = '\n'.join([doc.page_content for doc in docs])
+
+        return result
+
     def generate_response(self, prompt: str, history: list[dict[str, str]]) -> str:
         try:
+            messages = [
+                ('system', classifier_prompt),
+                ('user', f"User's query: {prompt}"),
+            ]
+            response = self.llm_classifier.invoke(messages)
+            logger.info(f'Response: {response}')
+            context = None
+            category = response.get('category')
+            if isinstance(category, int):
+                try:
+                    dataset_name = dataset_names[category]
+                    logger.info(f'Category: {dataset_name}')
+                    if dataset_name is not None:
+                        context = self._get_rag_context(
+                            prompt,
+                            dataset_name,
+                            k=3
+                        )
+                        logger.info(f'Context: {context}')
+                except Exception as e:
+                    logger.exception(f'Wrong RAG category: {str(e)}')
+
+            if context is not None:
+                prompt = prompt + f'\nКонтекст: {context}'
+                logger.info(f'Query: {prompt}')
             # Проверяем, что сообщения из history не дублируются в self.memory
             current_memory_contents = [msg.content for msg in self.memory.messages]
             # Добавляем только те сообщения из history, которых еще нет в self.memory
@@ -140,7 +207,8 @@ class LlamaService:
             return response.content.strip()
 
         except Exception as e:
-            return f"Ошибка при обращении к API: {str(e)}"
+            logger.exception(f'Ошибка в generate_response: {str(e)}')
+            return 'Извините, что-то пошло не так. Попробуйте снова!'
 
     def clear_memory(self):
         self.memory.clear()
@@ -161,6 +229,3 @@ class LlamaService:
 
         except Exception as e:
             logger.exception(f"Ошибка при чтении базы данных: {e}")
-
-    # def __del__(self):
-    #     self.session.close()

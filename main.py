@@ -1,12 +1,16 @@
 import logging
 
+import torch
 import streamlit as st
 
 from database import get_db
 from models import User
 from src import LlamaService
 
+torch.classes.__path__ = []
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # Инициализация состояния сессии
 if "messages" not in st.session_state:
@@ -81,8 +85,8 @@ if st.session_state.user_id is not None and not st.session_state.change_user:
 
         with st.chat_message("assistant"):
             with st.spinner("Печатает..."):
-                # Передаем полную историю
                 response = llama.generate_response(prompt, st.session_state.messages)
+                
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
