@@ -8,8 +8,9 @@ from langchain_core.documents import Document
 from configs import config
 
 MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class PopulateDatabase:
     def __init__(self) -> None:
@@ -29,7 +30,6 @@ class PopulateDatabase:
     def load_datasets(self) -> None:
         """Загрузка всех датасетов из директории data"""
         dataset_files = os.listdir(self.data_dir)
-        logger.info('Fetching the embedding model...')
         logger.info(f'Loading {len(dataset_files)} datasets')
         for filename in dataset_files:
             collection_name = filename.split('.')[0]
@@ -58,5 +58,6 @@ class PopulateDatabase:
 
 
 if __name__ == '__main__':
+    logger.info('Fetching the embedding model...')
     populate_db = PopulateDatabase()
     populate_db.load_datasets()

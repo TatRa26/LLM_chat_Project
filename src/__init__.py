@@ -1,1 +1,1 @@
-from .llm import LlamaService
+from src.llm import LlamaService
