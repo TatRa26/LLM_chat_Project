@@ -3,13 +3,13 @@ services:
     image: pgvector/pgvector:pg15
     container_name: postgres_db
     environment:
-      POSTGRES_USER: chat_user
-      POSTGRES_PASSWORD: chat_password
-      POSTGRES_DB: chat_history
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - '5432:5432'
+      - "5432:5432"
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -d chat_history -U chat_user']
+      test: ["CMD-SHELL", "pg_isready -d chat_history -U postgres"]
       interval: 3s
       timeout: 3s
       retries: 5
@@ -19,7 +19,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   migrations:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: llm_chat_image
     container_name: llm_chat_migrations
     command: ["alembic", "upgrade", "head"]
@@ -28,12 +30,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: llm_chat_image
     container_name: llm_chat_app
-    command: sh -c "
+    command: >
+      sh -c "
       echo Fetching the embedding model and populating the vector DataBase
       && echo It might take a couple of minutes...
       && python populate_db.py
@@ -41,7 +48,7 @@ services:
       && streamlit run main.py --server.port=8501 --server.address=0.0.0.0
       "
     ports:
-      - '8501:8501'
+      - "8501:8501"
     networks:
       - llm_chat_network
     depends_on:
@@ -49,6 +56,8 @@ services:
       - migrations
     volumes:
       - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
 
 volumes:
   postgres_data:
