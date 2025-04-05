@@ -25,6 +25,7 @@ services:
     image: llm_chat_image
     container_name: llm_chat_migrations
     command: ["alembic", "upgrade", "head"]
+    env_file: .env
     networks:
       - llm_chat_network
     depends_on:
@@ -49,6 +50,8 @@ services:
       "
     ports:
       - "8501:8501"
+    env_file: .env
+
     networks:
       - llm_chat_network
     depends_on:

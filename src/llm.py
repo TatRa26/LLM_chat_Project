@@ -28,7 +28,14 @@ dataset_names = {
     7: 'red_mad_robot',
     8: 'SP35',
     9: 'world_class',
-    10: None,
+    10: 'brave_bison_annual_report_2022',  # Новый файл
+    11: 'brave_bison_qa',  # Новый файл
+    12: 'rectifier_annual_report_2022',  # Новый файл
+    13: 'rectifier_qa',  # Новый файл
+    14: 'starvest_annual_report',  # Новый файл
+    15: 'qa_starvest',  # Новый файл
+    16: None,
+
 }
 
 class LlamaService:
