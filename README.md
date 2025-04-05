@@ -46,10 +46,11 @@
     make up
     ```
 - С помощью `docker`:
+```bash
+  docker compose up 
+```
 
-    ` docker compose up``bash
-   
-    ```
+
 
 Сервис будет доступен по адресу: http://localhost:8501
 
