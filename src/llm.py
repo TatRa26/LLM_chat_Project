@@ -28,7 +28,10 @@ dataset_names = {
     7: 'red_mad_robot',
     8: 'SP35',
     9: 'world_class',
-    10: None,
+    10: 'brave_bison',  # Новый файл
+    11: 'rectifier',  # Новый файл
+    12: 'starvest',  # Новый файл
+    13: None,
 }
 
 class LlamaService:

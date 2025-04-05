@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
+import os
 
 # Импортируем модели
 from models import Base
@@ -9,6 +10,12 @@ from models import Base
 target_metadata = Base.metadata
 
 config = context.config
+# Загружаем URL базы из переменной окружения, если она есть
+postgres_url = os.getenv("POSTGRES_URL", config.get_main_option("sqlalchemy.url"))
+config.set_main_option("sqlalchemy.url", postgres_url)
+
+# Временный отладочный вывод
+print(f"Using SQLAlchemy URL: {postgres_url}")
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
