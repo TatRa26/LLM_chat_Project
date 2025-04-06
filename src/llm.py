@@ -48,12 +48,10 @@ class LlamaService:
             schema=None,
             method='json_mode'
         )
-        self.system_prompt = SystemMessage(system_prompt)
+        self.system_prompt = system_prompt
         self.memory: BaseChatMessageHistory = ChatMessageHistory()
         self.load_history = True
         self.user_id = user_id
-        if self.user_id is None:
-            self.user_id = self._get_or_create_user("default_user")
         self._load_history_from_db()
 
     @staticmethod
@@ -149,7 +147,12 @@ class LlamaService:
 
         return result
 
-    def generate_response(self, prompt: str, history: list[dict[str, str]]) -> str:
+    def generate_response(
+            self,
+            prompt: str,
+            history: list[dict[str, str]],
+            username: str
+    ) -> str:
         try:
             messages = [
                 ('system', classifier_prompt),
@@ -173,9 +176,6 @@ class LlamaService:
                 except Exception as e:
                     logger.exception(f'Wrong RAG category: {str(e)}')
 
-            if context is not None:
-                prompt = prompt + f'\nКонтекст: {context}'
-                logger.info(f'Query: {prompt}')
             # Проверяем, что сообщения из history не дублируются в self.memory
             current_memory_contents = [msg.content for msg in self.memory.messages]
             # Добавляем только те сообщения из history, которых еще нет в self.memory
@@ -197,9 +197,9 @@ class LlamaService:
                     self.memory.add_user_message(prompt)
                     current_memory_contents.append(prompt)
 
-            messages = [self.system_prompt]
-            messages.extend(self.memory.messages)
-
+            system_msg = self.system_prompt.format(username=username)
+            system_msg = SystemMessage(system_msg + f'\nCONTEXT: {context}')
+            messages = [system_msg] + self.memory.messages
             response = self.client.invoke(messages)
 
             # Добавляем ответ ассистента
