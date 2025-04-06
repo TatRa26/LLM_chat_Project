@@ -197,9 +197,11 @@ class LlamaService:
                     self.memory.add_user_message(prompt)
                     current_memory_contents.append(prompt)
 
-            system_msg = self.system_prompt.format(username=username)
-            system_msg = SystemMessage(system_msg + f'\nCONTEXT: {context}')
-            messages = [system_msg] + self.memory.messages
+            system_msg = self.system_prompt.format(
+                username=username,
+                context=context
+            )
+            messages = [SystemMessage(system_msg)] + self.memory.messages
             response = self.client.invoke(messages)
 
             # Добавляем ответ ассистента
