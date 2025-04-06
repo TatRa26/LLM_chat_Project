@@ -5,12 +5,13 @@ from langchain_postgres import PGVector
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 
-from configs import config  # Предполагается, что у вас есть файл конфигурации
+from configs import config
 
-MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
+
+MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 
 class PopulateDatabase:
     def __init__(self) -> None:
@@ -22,6 +23,7 @@ class PopulateDatabase:
             embeddings=HuggingFaceEmbeddings(model_name=MODEL_NAME),
             collection_name=collection_name,
             connection=config.postgres_url,
+            pre_delete_collection=True,
             use_jsonb=True,
         )
         return vector_store
