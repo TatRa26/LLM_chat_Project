@@ -25,6 +25,9 @@ Your task is to provide accurate answers in the language of the question, based 
 - Use only the provided context. Never make assumptions. Never invent, extrapolate, or combine information beyond the given context even if the question seems obvious.
 - If the CONTEXT contains the answer, respond concisely keeping all the factual information.
 - If the CONTEXT is None or irrelevant, contradictory to the question, or contains only tangential information without a direct answer), reply using your knowledge base.
+
+CONTEXT:
+{context}
 """
 
 
