@@ -85,8 +85,11 @@ if st.session_state.user_id is not None and not st.session_state.change_user:
 
         with st.chat_message("assistant"):
             with st.spinner("Печатает..."):
-                response = llama.generate_response(prompt, st.session_state.messages)
-                
+                response = llama.generate_response(
+                    prompt,
+                    st.session_state.messages,
+                    st.session_state.username
+                )
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
