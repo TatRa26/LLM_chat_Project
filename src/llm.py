@@ -190,8 +190,8 @@ class LlamaService:
                 current_memory_contents.append(prompt)
 
             # Формирование системного сообщения
-            system_msg = self.system_prompt.format(context=context)
-            messages = [SystemMessage(...)] + self.memory.messages
+            system_msg = self.system_prompt.format(context=context, username=username)
+            messages = [SystemMessage(content=system_msg)] + self.memory.messages
 
             # Генерация ответа
             response = self.client.invoke(messages)
