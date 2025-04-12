@@ -190,13 +190,8 @@ class LlamaService:
                 current_memory_contents.append(prompt)
 
             # Формирование системного сообщения
-            system_msg = self.system_prompt.replace("{{category}}", dataset_name if dataset_name else "unknown")
-            messages = [SystemMessage(content=system_msg)] + self.memory.messages
-
-            if context:
-                messages.append(SystemMessage(content=f"CONTEXT:\n{context}"))
-
-            messages.append(HumanMessage(content=prompt))
+            system_msg = self.system_prompt.format(context=context)
+            messages = [SystemMessage(...)] + self.memory.messages
 
             # Генерация ответа
             response = self.client.invoke(messages)
