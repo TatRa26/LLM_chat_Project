@@ -16,7 +16,8 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 warnings.filterwarnings("ignore", category=UserWarning, module="langchain")
-MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+
+MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 dataset_names = {
     0: 'cyber_info',
     1: 'documents',
@@ -57,17 +58,14 @@ class LlamaService:
     @staticmethod
     def _get_or_create_user(username: str) -> int | None:
         try:
-            # Ищем пользователя по имени
             session = next(get_db())
             user = session.query(User).filter_by(username=username).first()
             if user:
                 return user.user_id
-            # Если пользователя нет, создаем нового
             new_user = User(username=username)
             session.add(new_user)
             session.commit()
             return new_user.user_id
-
         except Exception as e:
             logger.exception(f"Ошибка при получении/создании пользователя: {str(e)}")
             return None
@@ -75,9 +73,7 @@ class LlamaService:
     def _load_history_from_db(self) -> None:
         if not self.load_history or self.user_id is None:
             return
-
         try:
-            # Загружаем историю сообщений для пользователя
             session = next(get_db())
             messages = (
                 session
@@ -91,19 +87,17 @@ class LlamaService:
                     self.memory.add_user_message(msg.content)
                 elif msg.role == "assistant":
                     self.memory.add_ai_message(msg.content)
-
         except Exception as e:
             logger.exception(f"Ошибка при загрузке истории: {str(e)}")
 
     def _save_history_to_db(self) -> None:
         try:
             session = next(get_db())
-            # Подсчитываем текущее количество записей в базе для пользователя
             current_count = (
                 session
                 .query(ChatHistory)
-                .filter_by(user_id=self.user_id).
-                count()
+                .filter_by(user_id=self.user_id)
+                .count()
             )
             new_messages = self.memory.messages[current_count:]
             for msg in new_messages:
@@ -114,7 +108,6 @@ class LlamaService:
                     new_msg = ChatHistory(user_id=self.user_id, role="assistant", content=msg.content)
                     session.add(new_msg)
             session.commit()
-            # Ограничиваем количество записей (аналогично текущей логике)
             total_count = session.query(ChatHistory).filter_by(user_id=self.user_id).count()
             if total_count > 10000:
                 excess = total_count - 10000
@@ -122,7 +115,6 @@ class LlamaService:
                 for msg in oldest_messages:
                     session.delete(msg)
                 session.commit()
-
         except Exception as e:
             logger.exception(f"Ошибка при сохранении истории: {str(e)}")
 
@@ -134,17 +126,18 @@ class LlamaService:
             connection=config.postgres_url,
             use_jsonb=True,
         )
-
         return vector_store
 
-    def _get_rag_context(self, query: str,  collection_name: str, k: int = 1):
+    def _get_rag_context(self, query: str, collection_name: str, k: int = 5):
+        """Извлечение контекста из векторной базы данных."""
         vector_store = self._get_vector_store(collection_name)
+        logger.info(f"Searching in collection: {collection_name}")
         docs = vector_store.similarity_search(
             query, k=k,
             filter={"collection_name": {"$eq": collection_name}}
         )
+        logger.info(f"Retrieved documents: {[doc.page_content for doc in docs]}")
         result = '\n'.join([doc.page_content for doc in docs])
-
         return result
 
     def generate_response(
@@ -154,6 +147,21 @@ class LlamaService:
             username: str
     ) -> str:
         try:
+            # Очистка памяти перед новым запросом
+            self.memory.clear()
+            logger.info("Memory cleared")
+
+            # Загрузка истории из переданного history (если нужно)
+            current_memory_contents = [msg.content for msg in self.memory.messages]
+            for msg in history:
+                if msg["content"] not in current_memory_contents:
+                    if msg["role"] == "user":
+                        self.memory.add_user_message(msg["content"])
+                    elif msg["role"] == "assistant":
+                        self.memory.add_ai_message(msg["content"])
+                    current_memory_contents.append(msg["content"])
+
+            # Классификация запроса
             messages = [
                 ('system', classifier_prompt),
                 ('user', f"User's query: {prompt}"),
@@ -170,43 +178,31 @@ class LlamaService:
                         context = self._get_rag_context(
                             prompt,
                             dataset_name,
-                            k=3
+                            k=15
                         )
                         logger.info(f'Context: {context}')
                 except Exception as e:
                     logger.exception(f'Wrong RAG category: {str(e)}')
 
-            # Проверяем, что сообщения из history не дублируются в self.memory
-            current_memory_contents = [msg.content for msg in self.memory.messages]
-            # Добавляем только те сообщения из history, которых еще нет в self.memory
-            for msg in history:
-                if msg["content"] not in current_memory_contents:
-                    if msg["role"] == "user":
-                        self.memory.add_user_message(msg["content"])
-                    elif msg["role"] == "assistant":
-                        self.memory.add_ai_message(msg["content"])
-                    current_memory_contents.append(msg["content"])
+            # Добавление текущего запроса в память
+            if prompt not in current_memory_contents:
+                self.memory.add_user_message(prompt)
+                current_memory_contents.append(prompt)
 
-            # Проверяем, добавлено ли уже текущее сообщение (prompt) через history
-            if history and history[-1]["content"] == prompt and history[-1]["role"] == "user":
-                # Если prompt уже добавлен через history, не добавляем его снова
-                pass
-            else:
-                # Если prompt еще не добавлен, добавляем его
-                if prompt not in current_memory_contents:
-                    self.memory.add_user_message(prompt)
-                    current_memory_contents.append(prompt)
+            # Формирование системного сообщения
+            system_msg = self.system_prompt.replace("{{category}}", dataset_name if dataset_name else "unknown")
+            messages = [SystemMessage(content=system_msg)] + self.memory.messages
 
-            system_msg = self.system_prompt.format(
-                username=username,
-                context=context
-            )
-            messages = [SystemMessage(system_msg)] + self.memory.messages
+            if context:
+                messages.append(SystemMessage(content=f"CONTEXT:\n{context}"))
+
+            messages.append(HumanMessage(content=prompt))
+
+            # Генерация ответа
             response = self.client.invoke(messages)
-
-            # Добавляем ответ ассистента
             self.memory.add_ai_message(response.content)
 
+            # Сохранение истории в базу данных
             self._save_history_to_db()
 
             return response.content.strip()
@@ -231,6 +227,5 @@ class LlamaService:
                     print(f"{msg.id:<2} | {msg.user_id:<7} | {msg.role:<9} | {msg.content}")
             else:
                 print(f"История для user_id {self.user_id} пуста.")
-
         except Exception as e:
             logger.exception(f"Ошибка при чтении базы данных: {e}")
