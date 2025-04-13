@@ -6,6 +6,7 @@ import streamlit as st
 from database import get_db
 from models import User
 from src import LlamaService
+import json
 
 torch.classes.__path__ = []
 logging.basicConfig()
@@ -21,6 +22,8 @@ if "username" not in st.session_state:
     st.session_state.username = None
 if "change_user" not in st.session_state:
     st.session_state.change_user = False
+if "feedback" not in st.session_state:
+        st.session_state.feedback = {}
 
 # Инициализация LlamaService
 llama = LlamaService(st.session_state.user_id)
@@ -52,7 +55,7 @@ if st.session_state.user_id is not None and not st.session_state.change_user:
     st.subheader(f"Пользователь: {st.session_state.username}")
 
     # Кнопки управления
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4  = st.columns(4)
     with col1:
         if st.button("🗑️ Очистить"):
             st.session_state.messages = []
@@ -70,11 +73,55 @@ if st.session_state.user_id is not None and not st.session_state.change_user:
                 del st.session_state[key]
             st.session_state.change_user = True
             st.rerun()
+    with col4:
+        if st.button("📥 Экспортировать чат"):
+            chat_export = []
+            for i, message in enumerate(st.session_state.messages):
+                entry = {
+                    "role": message["role"],
+                    "content": message["content"],
+                    "feedback": st.session_state.feedback.get(i, "")
+                }
+                chat_export.append(entry)
+            chat_json = json.dumps(chat_export, ensure_ascii=False, indent=2)
+            st.download_button(
+                label="Скачать чат (JSON)",
+                data=chat_json,
+                file_name="chat_history.json",
+                mime="application/json"
+            )
 
     # История сообщений
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+        # Обратная связь по последнему ответу
+    if st.session_state.messages:
+        last_index = len(st.session_state.messages) - 1
+        last_message = st.session_state.messages[last_index]
+        if last_message["role"] == "assistant":
+            st.markdown("### 🤖 Оцените последний ответ:")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("👍 Полезный", key="feedback_good"):
+                    st.session_state.feedback[last_index] = "Полезный"
+            with col2:
+                if st.button("👎 Неполезный", key="feedback_bad"):
+                    st.session_state.feedback[last_index] = "Неполезный"
+
+            feedback_val = st.session_state.feedback.get(last_index)
+            if feedback_val:
+                st.success(f"Вы оценили ответ как: {feedback_val}")
+
+            # Пояснение к ответу
+            if st.button("💡 Пояснение к ответу"):
+                explanation = llama.explain_response(last_message["content"], last_message["content"])
+                st.write("Пояснение:", explanation)
+
+            # Аналитика по сессии
+            if st.button("📊 Аналитика по сессии"):
+                analytics = llama.generate_session_analytics()
+                st.write("Аналитика по сессии:", analytics)
 
     # Поле ввода сообщения
     if prompt := st.chat_input("Введите ваше сообщение"):
@@ -103,3 +150,19 @@ else:
             st.session_state.username = username
             st.session_state.change_user = False
             st.rerun()
+
+# Кастомные стили
+st.markdown("""
+    <style>
+    .stTextArea textarea {
+        border: 2px solid #007bff;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    .stButton button {
+        background-color: #007bff;
+        color: white;
+        border-radius: 5px;
+    }
+    </style>
+""", unsafe_allow_html=True)

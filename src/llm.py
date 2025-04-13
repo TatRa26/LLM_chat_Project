@@ -206,6 +206,43 @@ class LlamaService:
             logger.exception(f'Ошибка в generate_response: {str(e)}')
             return 'Извините, что-то пошло не так. Попробуйте снова!'
 
+    def explain_response(self, user_query: str, model_answer: str) -> str:
+        """
+        Поясняет, почему был дан такой ответ на вопрос пользователя.
+        """
+        try:
+            explanation_prompt = (
+                "Ты — помощник, объясняющий, почему ты дал такой ответ пользователю.\n"
+                "Проанализируй, на основе каких фактов или контекста ты дал этот ответ.\n\n"
+                f"Вопрос пользователя:\n{user_query}\n\n"
+                f"Ответ:\n{model_answer}\n\n"
+                "Объясни, почему ты ответил именно так:"
+            )
+            explanation = self.client.invoke([HumanMessage(content=explanation_prompt)])
+            return explanation.content.strip()
+        except Exception as e:
+            logger.exception(f"Ошибка в explain_response: {str(e)}")
+            return "Не удалось сформулировать объяснение."
+
+    def generate_session_analytics(self) -> str:
+        """
+        Генерирует краткую аналитику по текущей сессии: темы, количество сообщений, активность и т.д.
+        """
+        try:
+            history_text = "\n".join([f"{msg.type.upper()}: {msg.content}" for msg in self.memory.messages])
+            analytics_prompt = (
+                "Ты аналитик, обрабатывающий историю чата между пользователем и ИИ.\n"
+                "Проанализируй диалог: сколько сообщений, кто был активнее, какие темы обсуждались.\n"
+                "Сформулируй краткий аналитический отчет.\n\n"
+                f"История:\n{history_text}\n\n"
+                "Отчет:"
+            )
+            report = self.client.invoke([HumanMessage(content=analytics_prompt)])
+            return report.content.strip()
+        except Exception as e:
+            logger.exception(f"Ошибка в generate_session_analytics: {str(e)}")
+            return "Не удалось сгенерировать аналитику по сессии."
+
     def clear_memory(self):
         self.memory.clear()
         self.load_history = False
