@@ -52,3 +52,9 @@ Categories:
 12: Starvest mining investment company
 13: None of the above
 """
+
+validation_prompt = """
+You are a helpful assistant. Your task is to determine whether the provided assistant's response fully answers the provided users'query.
+Your answer is supposed to be in the following JSON format: {"is_valid": boolean}.
+
+"""
